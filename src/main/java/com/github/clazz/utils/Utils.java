@@ -1,6 +1,7 @@
 package com.github.clazz.utils;
 
 import com.github.clazz.model.JarClass;
+import com.sun.istack.internal.Nullable;
 
 import java.io.File;
 import java.io.IOException;
@@ -11,9 +12,8 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.ArrayList;
-import java.util.Enumeration;
-import java.util.List;
+import java.util.*;
+import java.util.function.Predicate;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
@@ -85,6 +85,82 @@ public final class Utils {
         }
 
         return dirJarFiles;
+    }
+
+    /**
+     * List the {@code directory} recursively and return the files that satisfy the {@code
+     * fileFilter}.
+     *
+     * @param directory the directory to be listed
+     * @param fileFilter a file filter
+     * @return a collection of {@code File}s
+     * @throws IOException if an I/O error occurs while listing the files in the given directory
+     */
+    public static Collection<Path> listFilesInDirectory(
+            final Path directory,
+            final Predicate<Path> fileFilter) throws IOException {
+        checkNotNull(directory, "directory");
+        checkNotNull(fileFilter, "fileFilter");
+
+        if (!Files.exists(directory)) {
+            throw new IllegalArgumentException(
+                    String.format("The directory %s dose not exist.", directory));
+        }
+        if (!Files.isDirectory(directory)) {
+            throw new IllegalArgumentException(
+                    String.format("The %s is not a directory.", directory));
+        }
+
+        final FilterFileVisitor filterFileVisitor = new FilterFileVisitor(fileFilter);
+
+        Files.walkFileTree(
+                directory,
+                EnumSet.of(FileVisitOption.FOLLOW_LINKS),
+                Integer.MAX_VALUE,
+                filterFileVisitor);
+
+        return filterFileVisitor.getFiles();
+    }
+
+    /**
+     * Returns the current working directory as specified by the {@code user.dir} system property.
+     *
+     * @return current working directory
+     */
+    public static Path getCurrentWorkingDirectory() {
+        return Paths.get(System.getProperty("user.dir"));
+    }
+
+    /**
+     * Ensures that the given object reference is not null. Upon violation, a {@code
+     * NullPointerException} with the given message is thrown.
+     *
+     * @param reference The object reference
+     * @param errorMessage The message for the {@code NullPointerException} that is thrown if the
+     *     check fails.
+     * @return The object reference itself (generically typed).
+     * @throws NullPointerException Thrown, if the passed reference was null.
+     */
+    public static <T> T checkNotNull(@Nullable T reference, @Nullable String errorMessage) {
+        if (reference == null) {
+            throw new NullPointerException(String.valueOf(errorMessage));
+        }
+        return reference;
+    }
+
+    /**
+     * Ensures that the given object reference is not null. Upon violation, a {@code
+     * NullPointerException} with no message is thrown.
+     *
+     * @param reference The object reference
+     * @return The object reference itself (generically typed).
+     * @throws NullPointerException Thrown, if the passed reference was null.
+     */
+    public static <T> T checkNotNull(@Nullable T reference) {
+        if (reference == null) {
+            throw new NullPointerException();
+        }
+        return reference;
     }
 
     public static List<JarClass> jarFileClassesParse(List<File> dirJarFiles){
